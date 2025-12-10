@@ -5,7 +5,7 @@ from PIL import Image
 
 st.set_page_config(page_title="EV Charging Predictor", page_icon="⚡", layout="centered")
 
-cover_image = Image.open("cover.jpg")   # or "cover.png"
+cover_image = Image.open("cover.jpg")   
 st.image(cover_image, width='stretch')
 
 
@@ -78,7 +78,7 @@ def compute_hist_and_freq(user_id, location, now_dt):
     return float(demand_lag1), float(demand_lag3), float(demand_mean_5), int(user_freq), int(location_freq)
 
 
-# ========= USER INPUTS ONLY (VISIBLE) =========
+# ========= USER INPUTS  =========
 st.subheader("Session Inputs")
 
 col1, col2 = st.columns(2)
@@ -104,7 +104,7 @@ hour_location = f"{start_hour}_{location}"
 user_location = f"{user_id}_{location}"
 charger_user_combo = f"{user_id}_{charger_type}"
 
-# ========= HIDDEN AUTO FEATURES (HARDCODED DEFAULTS) =========
+# ========= HIDDEN AUTO FEATURES  =========
 
 start_dt_str = f"01-{month:02d}-2025 {start_hour:02d}:{start_minute:02d}" 
 now_dt = pd.to_datetime(start_dt_str, format="%d-%m-%Y %H:%M")
