@@ -1,8 +1,14 @@
 import streamlit as st
 import pandas as pd
 import joblib
+from PIL import Image
 
 st.set_page_config(page_title="EV Charging Predictor", page_icon="⚡", layout="centered")
+
+cover_image = Image.open("cover.jpg")   # or "cover.png"
+st.image(cover_image, width='stretch')
+
+
 
 st.title("⚡ EV Charging Demand & Cost Predictor")
 st.write("Enter session details to predict **Demand (kWh)** and **Total Cost (USD)** ")
@@ -26,6 +32,51 @@ price_map = {
 
 cat_features = ['UserID', 'Location', 'ChargerType',
                 'hour_location', 'user_location', 'charger_user_combo']
+
+
+hist_df = pd.read_csv("ChargingRecords.csv")
+hist_df["StartDatetime"] = pd.to_datetime(
+    hist_df["StartDatetime"], format="%d-%m-%Y %H:%M", errors="coerce"
+)
+hist_df["EndDatetime"] = pd.to_datetime(
+    hist_df["EndDatetime"], format="%d-%m-%Y %H:%M", errors="coerce"
+)
+
+hist_df = hist_df.dropna(subset=["StartDatetime", "EndDatetime"])
+hist_df["Duration_min"] = (hist_df["EndDatetime"] - hist_df["StartDatetime"]).dt.total_seconds() / 60
+hist_df = hist_df[hist_df["Duration_min"] > 0]
+hist_df = hist_df[hist_df["Demand"] >= 0.01]
+
+hist_df = hist_df.sort_values(["UserID", "StartDatetime"]).reset_index(drop=True)
+GLOBAL_DEMAND_MED = hist_df["Demand"].median()
+
+def compute_hist_and_freq(user_id, location, now_dt):
+    # filter past sessions of this user
+    user_hist = hist_df[
+        (hist_df["UserID"].astype(str) == str(user_id)) &
+        (hist_df["StartDatetime"] < now_dt)
+    ].sort_values("StartDatetime")
+
+    demand_lag1 = GLOBAL_DEMAND_MED
+    demand_lag3 = GLOBAL_DEMAND_MED
+    demand_mean_5 = GLOBAL_DEMAND_MED
+    user_freq = 0
+
+    if len(user_hist) > 0:
+        user_freq = len(user_hist)
+        demand_lag1 = user_hist["Demand"].iloc[-1]
+        demand_mean_5 = user_hist["Demand"].tail(5).mean()
+        demand_lag3 = user_hist["Demand"].iloc[-3] if len(user_hist) >= 3 else demand_lag1
+
+    # location frequency 
+    loc_hist = hist_df[
+        (hist_df["Location"] == location) &
+        (hist_df["StartDatetime"] < now_dt)
+    ]
+    location_freq = len(loc_hist)
+
+    return float(demand_lag1), float(demand_lag3), float(demand_mean_5), int(user_freq), int(location_freq)
+
 
 # ========= USER INPUTS ONLY (VISIBLE) =========
 st.subheader("Session Inputs")
@@ -55,11 +106,16 @@ charger_user_combo = f"{user_id}_{charger_type}"
 
 # ========= HIDDEN AUTO FEATURES (HARDCODED DEFAULTS) =========
 
-demand_lag1 = 30.17
-demand_lag3 = 14.25	
-demand_mean_5 = 30.170	
-user_freq = 3129
-location_freq = 13969	
+start_dt_str = f"01-{month:02d}-2025 {start_hour:02d}:{start_minute:02d}" 
+now_dt = pd.to_datetime(start_dt_str, format="%d-%m-%Y %H:%M")
+
+    # ==== AUTO history & frequency ====
+demand_lag1, demand_lag3, demand_mean_5, user_freq, location_freq = \
+        compute_hist_and_freq(user_id, location, now_dt)
+
+hour_location = f"{start_hour}_{location}"
+user_location = f"{user_id}_{location}"
+charger_user_combo = f"{user_id}_{charger_type}"	
 
 # ========= BUILD FEATURE ROW =========
 row = {
@@ -97,8 +153,10 @@ if st.button("Predict Demand & Cost"):
     
 
     st.success(f"Predicted Demand: **{demand_pred:.2f} kWh**")
-    st.success(f"Predicted Cost (model): **${cost_pred:.2f}**")
+    st.success(f"Predicted Cost: **${cost_pred:.2f}**")
+   
+
     
 
 st.markdown("---")
-st.caption("Historical and frequency features are auto-filled for this demo. In a real system, they would come from the user's stored charging history in the database.")
+st.caption("Powered by LightGBM with optimized hyperparameters and engineered EV charging features.")
