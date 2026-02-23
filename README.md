@@ -21,5 +21,5 @@ A machine learning architecture designed to predict Electric Vehicle (EV) chargi
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/yourusername/ev-demand-predictor.git](https://github.com/yourusername/ev-demand-predictor.git)
-   cd ev-demand-predictor
+   git clone https://github.com/Harigovind04/EV-Charging-Price-and-Energy-Prediction-using-Machine-Learning.git
+   
